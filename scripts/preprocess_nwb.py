@@ -17,8 +17,8 @@ from ecog.signal_processing import resample
 from ecog.signal_processing import subtract_CAR
 from ecog.signal_processing import linenoise_notch
 from ecog.signal_processing import hilbert_transform
-from ecog.signal_processing import gaussian, hamming
-from ecog.utils import HTK, load_bad_electrodes, bands
+from ecog.signal_processing import gaussian
+from ecog.utils import load_bad_electrodes, bands
 
 def _resample(X, new_freq, old_freq):
     if not np.allclose(new_freq, old_freq):
@@ -73,9 +73,6 @@ def _write_data(datafilename, Y, decomp_type, cfs, sds):
             dset.dims.create_scale(ds_group[name], name)
             dset.dims[0].attach_scale(ds_group[name])
 
-        import ipdb; ipdb.set_trace()
-        pass
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Preprocessing ecog data from nwb.')
@@ -86,8 +83,6 @@ if __name__ == '__main__':
                         help="Center frequency of the Gaussian filter")
     parser.add_argument('--sds', type=float, nargs='+', default=None,
                         help="Standard deviation of the Gaussian filter")
-    parser.add_argument('-n', '--neuro', default=False, action='store_true',
-                        help="Use standard neuroscience frequency bands")
     parser.add_argument('--no-notch', default=False, action='store_true',
                         help="Do not perform notch filtering")
     parser.add_argument('--no-car', default=False, action='store_true',
