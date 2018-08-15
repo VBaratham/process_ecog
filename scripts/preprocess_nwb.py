@@ -20,22 +20,23 @@ from ecog.signal_processing import hilbert_transform
 from ecog.signal_processing import gaussian
 from ecog.utils import load_bad_electrodes, bands
 
+def _load_data(datafilename, acq_field):
+    with h5py.File(datafilename, 'r') as datafile:
+        # TODO: take depth electrodes data
+        acq_fieldname = 'acquisition/Raw/{}'.format(acq_field)
+        X = datafile['{}/data'.format(acq_fieldname)][:].T
+        freq = datafile['{}/starting_time'.format(acq_fieldname)].attrs['rate']
+        unit = datafile['{}/starting_time'.format(acq_fieldname)].attrs['unit']
+
+        assert unit.lower() == "seconds"
+
+    return X, freq
+
 def _resample(X, new_freq, old_freq):
     if not np.allclose(new_freq, old_freq):
         assert new_freq < old_freq
         X = resample(X, new_freq, old_freq)
     return X
-
-def _load_data(datafilename):
-    with h5py.File(datafilename, 'r') as datafile:
-        # TODO: take depth electrodes data
-        X = datafile['acquisition/Raw/ECoG128/data'][:]
-        freq = datafile['acquisition/Raw/ECoG128/starting_time'].attrs['rate']
-        unit = datafile['acquisition/Raw/ECoG128/starting_time'].attrs['unit']
-
-        assert unit.lower() == "seconds"
-
-    return X, freq
 
 def _notch_filter(X, rate):
     return linenoise_notch(X, rate)
@@ -53,14 +54,14 @@ def _hilbert_transform(X, rate, cfs, sds):
 
     return Y
 
-def _write_data(datafilename, Y, decomp_type, cfs, sds):
+def _write_data(datafilename, acq_field, Y, decomp_type, cfs, sds):
     with h5py.File(datafilename, 'r+') as datafile:
         # TODO: Get the dataset name right
-        ds_group_name = 'processing/preprocessed/Wvlt_4to1200_54band_CAR1'
+        ds_group_name = 'processing/preprocessed/Hilb_ChangBands'
         if ds_group_name in datafile:
             del datafile[ds_group_name]
         ds_group = datafile.create_group(ds_group_name)
-        ds_name = 'Wvlt_ECoG128'
+        ds_name = 'Hilb_{}'.format(acq_field)
         dset = ds_group.create_dataset(ds_name, data=Y)
 
         dset.dims[0].label = 'filter'
@@ -77,6 +78,7 @@ def _write_data(datafilename, Y, decomp_type, cfs, sds):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Preprocessing ecog data from nwb.')
     parser.add_argument('datafile', type=str, help="Input/output .nwb file")
+    parser.add_argument('--acq-field', type=str, default='ECoG128')
     parser.add_argument('-r', '--rate', type=float, default=400.,
                         help='Resample data to this rate.')
     parser.add_argument('--cfs', type=float, nargs='+', default=None,
@@ -112,7 +114,7 @@ if __name__ == '__main__':
 
     # LOAD DATA
     start = time.time()
-    X, freq = _load_data(args.datafile)
+    X, freq = _load_data(args.datafile, args.acq_field)
     print("Time to load {}: {} sec".format(args.datafile, time.time()-start))
 
     # RESAMPLE
@@ -144,5 +146,5 @@ if __name__ == '__main__':
 
     # WRITE DATA
     start = time.time()
-    _write_data(args.datafile, Y, decomp_type, cfs, sds)
+    _write_data(args.datafile, args.acq_field, Y, decomp_type, cfs, sds)
     print("Time to write {}: {} sec".format(args.datafile, time.time()-start))
