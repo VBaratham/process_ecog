@@ -102,7 +102,7 @@ def transform(block_path, rate=400., cfs=None, sds=None, srf=1e4,
         print('rates {}: {} {}'.format(block_name, rate, fs))
         if not np.allclose(rate, fs):
             assert rate < fs
-            X = resample.resample_ecog(X, rate, fs)
+            X = resample(X, rate, fs)
     except IOError:
         try:
             # HDF5 .mat format
